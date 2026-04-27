@@ -6,7 +6,7 @@ from langchain_community.utilities import PubMedAPIWrapper
 import json
 import os
 from dotenv import load_dotenv
-from schema import (MedicalResearchState, ClinicalInterpretation, 
+from Agent.schema import (MedicalResearchState, ClinicalInterpretation, ArticleScore,
                     focus_instructions, N_SEARCH_RESULTS, MAX_ITERATIONS,
                     MIN_SCORE, TARGET_ARTICLES, LIMIT_SLEEP)
 
@@ -57,6 +57,7 @@ def analyze_pacient(state: MedicalResearchState)-> dict:
         "search_completion": False,
     }
     
+    
 #Node 2: Search articles, try pubmed API then duckduckgo
 def articles_search(state: MedicalResearchState)-> dict:
         
@@ -73,7 +74,24 @@ def articles_search(state: MedicalResearchState)-> dict:
     
     try:
         pubmed_results=pubmed.run(query)
-        
+        if pubmed_results and "Title:" in pubmed_results:
+            bloques = pubmed_results.split("\n\n")
+            for bloque in bloques:
+                if "Title:" not in bloque:
+                    continue
+                lines=bloque.strip().split("\n")
+                title=next((l.replace("Title:", "").strip() for l in lines if l.startswith("Title:")), "")
+                uid    = next((l.replace("Published:", "").strip() for l in lines if l.startswith("Published:")), "")
+                snippet= "\n".join(l for l in lines if not l.startswith(("Title:", "Published:", "Copyright")))
+                url    = f"https://pubmed.ncbi.nlm.nih.gov/?term={'+'.join(title.split()[:5])}"
+
+                if title and url not in seen:
+                    seen.add(url)
+                    new.append({"title": title, "snippet": snippet[:800], "url":url, "source":"PubMed","query_used":query})
+                    new_url.append(url)
+    except Exception as error:
+        print(f" PubMed error: {error}")
+
     medical_sites=("site:pubmed.ncbi.nlm.nih.gov OR site:nejm.org OR site:thelancet.com "
         "OR site:jamanetwork.com OR site:bmj.com OR site:ahajournals.org "
         "OR site:nature.com OR site:uptodate.com")
@@ -83,3 +101,86 @@ def articles_search(state: MedicalResearchState)-> dict:
         results=consult_query.invoke(consult_query)
         if isinstance(results, str):
             results=json.loads(results)
+            
+        before=len(new)
+        for r in results:
+            url=r.get("link",r.get("url", ""))
+            title=r.get("title", "")
+            if url and url not in seen:
+                seen.add(url)
+                new.append({"title": title, "snippet": r.get("snippet",r.get("body", ""))[:800], "url":url, "source":"DuckDuckGo","query_used":query})
+            new_url.append(url)
+            
+    except Exception as error:
+        print(f"DuckDuckGo error: {error}")
+    
+    
+    return {
+        "raw articles": state["raw_articles"] + new,
+        "urls_seen": state.get("urls_seen", []) +new_url,
+        "current_query_index": index +1,
+        "iterations": state["iterations"]+1,
+    }
+
+
+# Node 3: Evaluate relevance
+def punctuate_articles(state: MedicalResearchState)-> dict:
+    punctuated={a["url"] for a in state.get("articles_punctuation", [])}
+    to_punctuate=[a for a in state["raw_articles"] if a ["url"] not in punctuated]
+
+    if not to_punctuate:
+        return{}
+    
+    llm_scorer=LLM.with_structured_output(ArticleScore)
+    now_punctuated=[]
+    
+    for article in to_punctuate:
+        try:
+            score:ArticleScore=llm_scorer.invoke([
+                SystemMessage(content=(
+                    "You are an expert in evidence-based medicine. "
+                    "Evaluate the relevance of this article to the clinical case. "
+                    "Consider diagnostic and therapeutic relevance, as well as the level of evidence. "
+                    f"Relevant = score >= {MIN_SCORE}."
+                )),
+                HumanMessage(content=(
+                    f"CLINICAL CONTEXT:\n{state["clinical_summary"]}\n\n"
+                    f"ARTICLE:\nTitle: {article['title']}\n"
+                    f"Snippet: {article['snippet']}\n"
+                    f"Source: {article['url']}"
+                ))
+            ])
+            now_punctuated.append({
+                **article,
+                "punctuation": score.punctuation,
+                "evidence_level": score.evidence_level,
+                "is relevant": score.is_relevant,
+                "justification": score.justification,
+            })
+            
+            #relevance="True" if score.is_relevant else "False"
+            #print(f"   {relevance} [{score.punctuation:.1f}/10] [{score.evidence_level}] {article['title'][:70]}...")
+
+        except Exception as error:
+            print(f"Error ranking '{article["title"]}':{error}")
+            continue
+        
+    total_punctuated = sorted(
+        state.get("articles_punctuation", [])+now_punctuated,
+        key=lambda x:x.get("punctuation",0).
+        reverse=True,
+    )
+
+    return {"articles_punctuated": total_punctuated}
+
+
+# Node 5: Select top
+def select_top(state: MedicalResearchState) -> dict:
+    punctuated=state.get("articles_punctuation",[])
+    if not punctuated:
+        print("Any articles were found")
+        return{"best_articles": []}
+    
+    high_quality=[a for a in punctuated if a.get("punctuation", 0)>= MIN_SCORE]
+    others=[a for a in punctuated if a.get("punctuation", 0)< MIN_SCORE]
+    candidates=(high_quality+others)[:TARGET_ARTICLES]
