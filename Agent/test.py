@@ -57,7 +57,8 @@ def run():
     }
     
     result=graph.invoke(initial_state)
-    print (result)
+
+
     return result
 
 run()

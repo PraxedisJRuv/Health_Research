@@ -30,7 +30,7 @@ class MedicalResearchState(TypedDict):
     best_articles: List[dict]
     
     # Node 6: Final analysis 
-    final_reports: List[dict]
+    final_report: List[dict]
     
     #Control
     search_completion: bool

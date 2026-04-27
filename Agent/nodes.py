@@ -7,8 +7,8 @@ import json
 import os
 from dotenv import load_dotenv
 from Agent.schema import (MedicalResearchState, ClinicalInterpretation, ArticleScore,
-                    focus_instructions, N_SEARCH_RESULTS, MAX_ITERATIONS,
-                    MIN_SCORE, TARGET_ARTICLES, LIMIT_SLEEP)
+                    ArticleAnalysis,focus_instructions, N_SEARCH_RESULTS, 
+                    MAX_ITERATIONS, MIN_SCORE, TARGET_ARTICLES, LIMIT_SLEEP)
 
 # LLM and search engine configuration
 load_dotenv()
@@ -17,6 +17,12 @@ LLM = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0, api_k
 
 ddg_wrapper=DuckDuckGoSearchAPIWrapper(max_results=N_SEARCH_RESULTS, time="y")
 ddg_search=DuckDuckGoSearchResults(api_wrapper=ddg_wrapper, output_format="list")
+
+pubmed = PubMedAPIWrapper(
+    top_k_results=3,
+    doc_content_chars_max=2000,
+    email=os.getenv("NCBI_EMAIL", "investigacion@hospital.mx"),
+)
 
 # Nodes
 
@@ -167,7 +173,7 @@ def punctuate_articles(state: MedicalResearchState)-> dict:
         
     total_punctuated = sorted(
         state.get("articles_punctuation", [])+now_punctuated,
-        key=lambda x:x.get("punctuation",0).
+        key=lambda x:x.get("punctuation",0),
         reverse=True,
     )
 
@@ -184,3 +190,52 @@ def select_top(state: MedicalResearchState) -> dict:
     high_quality=[a for a in punctuated if a.get("punctuation", 0)>= MIN_SCORE]
     others=[a for a in punctuated if a.get("punctuation", 0)< MIN_SCORE]
     candidates=(high_quality+others)[:TARGET_ARTICLES]
+    
+    #for i,a in enumerate(candidates, 1):
+        #print(f"    #{i} [{a.get("punctuation", 0):.1f}/10]")
+        
+    return {"best_articles":candidates}
+
+def article_analysis(state: MedicalResearchState)-> dict:
+    llm_analyst=LLM.with_structured_output(ArticleAnalysis)
+    patient_json=json.dump(state["patient_data"], ensure_ascii=False, indent=2)
+    report=[]
+    
+    for i, article in enumerate(state["best_articles"], 1):
+        #print(f"    Analyzing #{i}: {article["title"]}...")
+        try:
+            analysis: ArticleAnalysis=llm_analyst.invoke([
+                SystemMessage(content=(
+                    "You are a physician drafting a literature review report. "
+                    "Write with clinical rigor. "
+                    "The abstract summary must be faithful to the article's content. "
+                    "The clinical analysis must be specific to THIS patient, "
+                    "mentioning specific diagnostic or therapeutic implications."
+                )),
+                HumanMessage(content=(
+                    f"FULL PATIENT HISTORY:\n{patient_json}\n\n"
+                    f"CLINICAL SUMMARY:\n{state["clinical_summary"]}\n\n"
+                    f"ARTICLE #{i}:\n"
+                    f"Title: {article['title']}\n"
+                    f"URL/Source: {article['url']}\n"
+                    f"Available content: {article['snippet']}\n"
+                    f"Level of evidence: {article.get('evidence_level', 'Not determined')}\n"
+                    f"Relevance score: {article.get('punctuation', 'N/A')}/10\n"
+                    f"Evaluator justification: {article.get('justification', '')}"
+                ))
+            ])
+            report.append(analysis.model_dump())
+        except Exception as error:
+            print(f"    Error analyzing article #{i}: {error}")
+            report.append({
+                "title": article.get("title", "without title"),
+                "source_url": article.get("url", ""),
+                "abstract": article.get("snippet", "Not available"),
+                "clinical_analysis": "It wasn't possible to generate an analysis",
+                "evidence_level": article.get("evidence_level", "unknown"),
+                "relevance_punctuation": article.get("punctuation",0),
+            })
+    return{"final_report":report}
+
+#def print_report(state: MedicalResearchState) -> dict:
+    
