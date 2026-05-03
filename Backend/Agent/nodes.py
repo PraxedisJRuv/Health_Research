@@ -6,8 +6,8 @@ from langchain_community.utilities import PubMedAPIWrapper
 import json
 import os
 from dotenv import load_dotenv
-from Agent.schema import (MedicalResearchState, ClinicalInterpretation, ArticleScore,
-                    ArticleAnalysis,focus_instructions, N_SEARCH_RESULTS, 
+from .schema import (MedicalResearchState, ClinicalInterpretation, ArticleScore,
+                    ArticleAnalysis, focus_instructions, N_SEARCH_RESULTS, 
                     MAX_ITERATIONS, MIN_SCORE, TARGET_ARTICLES, LIMIT_SLEEP)
 
 # LLM and search engine configuration
@@ -35,7 +35,7 @@ def analyze_pacient(state: MedicalResearchState)-> dict:
     llm_structured=LLM.with_structured_output(ClinicalInterpretation)
     
     response: ClinicalInterpretation =llm_structured.invoke([
-        SystemMessage(Content=(
+        SystemMessage(content=(
             "You are an internist with a subspecialty in evidence-based medicine. "
     "Analyze the clinical history and generate search queries for PubMed.\n\n"
     f"MANDATORY FOCUS: {instruction}\n\n"

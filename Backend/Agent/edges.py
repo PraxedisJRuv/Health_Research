@@ -1,8 +1,8 @@
 
 from typing import Literal
-from schema import (MedicalResearchState, 
+from .schema import (MedicalResearchState, 
                     MIN_SCORE, TARGET_ARTICLES, MAX_ITERATIONS)
-def stop_criteria(state: MedicalResearchState)-> Literal["search_articles", "select_top"]:
+def stop_criteria(state: MedicalResearchState)-> Literal["articles_search", "select_top"]:
     high_quality=[
         a for a in state.get("articles_punctuation", [])
         if a.get("punctuation", 0)>= MIN_SCORE
@@ -20,4 +20,4 @@ def stop_criteria(state: MedicalResearchState)-> Literal["search_articles", "sel
         print(f"Reached maximum iterations ({MAX_ITERATIONS})")
         return "select_top"
     
-    return "search_articles"
+    return "articles_search"

@@ -1,5 +1,5 @@
-from schema import MedicalResearchState
-from graph import graph_build
+from Backend.Agent.schema import MedicalResearchState
+from Backend.Agent.graph import graph_build
 
 EXAMPLE={"patient_id": "MX-2024-001",
     "age": 67,

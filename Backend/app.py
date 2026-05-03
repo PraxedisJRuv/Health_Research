@@ -1,11 +1,20 @@
 from fastapi import FastAPI, Depends, HTTPException, Response, Query
 from sqlmodel import Session, select, or_, func
 from typing import Literal
-from .models import *
-from .utils import get_session, create_db
-from Agent.graph import graph_build
 
-app=FastAPI()
+try:
+    from .models import *
+    from .utils import get_session, create_db
+except ImportError:
+    from models import *
+    from utils import get_session, create_db
+
+try:
+    from Backend.Agent.graph import graph_build
+except ImportError:
+    from Agent.graph import graph_build
+
+app = FastAPI()
 
 create_db()
 
@@ -16,7 +25,7 @@ graph = graph_build()
 @app.post("/pacients",response_model=PacientPublic)
 def create_pacient(pacient:PacientCreate, session=Depends(get_session)):
     db_pacient=PacientDB.model_validate(pacient)
-    session.add(pacient)
+    session.add(db_pacient)
     session.commit()
     session.refresh(db_pacient)
     return db_pacient
@@ -156,14 +165,28 @@ def create_analyses(request: AnalysisRequest, session=Depends(get_session)):
     if not pacient:
         raise HTTPException(status_code=404, detail="Pacient not found")
     
+    # Clean patient data: exclude None values
+    pacient_data = {k: v for k, v in pacient.model_dump().items() if v is not None}
+    consult_data = {k: v for k, v in consult.model_dump().items() if v is not None}
+    
     patient_data = {
-        "pacient": pacient.model_dump(),
-        "consult": consult.model_dump()
+        "pacient": pacient_data,
+        "consult": consult_data
     }
     
     initial_state = {
         "patient_data": patient_data,
-        "search_focus": focus
+        "search_focus": focus,
+        "clinical_summary": "",
+        "queries": [],
+        "current_query_index": 0,
+        "raw_articles": [],
+        "urls_seen": [],
+        "articles_punctuation": [],
+        "iterations": 0,
+        "best_articles": [],
+        "final_report": [],
+        "search_completion": False
     }
     
     result = graph.invoke(initial_state)
@@ -184,3 +207,19 @@ def create_analyses(request: AnalysisRequest, session=Depends(get_session)):
         session.refresh(a)
     
     return AnalysisList(items=analyses, total=len(analyses), offset=0, limit=len(analyses))
+
+@app.get("/analyses/{analysis_id}", response_model=AnalysisPublic)
+def get_analysis(analysis_id: int, session=Depends(get_session)):
+    analysis=session.get(AnalysisDB, analysis_id)
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return analysis
+
+@app.delete("/analyses/{analysis_id}")
+def delete_analysis(analysis_id: int, session=Depends(get_session)):
+    analysis=session.get(AnalysisDB, analysis_id)
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    session.delete(analysis)
+    session.commit()
+    return Response(status_code=204)

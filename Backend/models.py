@@ -1,6 +1,7 @@
 import datetime
-from typing import Optional
+from typing import Optional, Literal, List
 from sqlmodel import Field, SQLModel
+from sqlalchemy import Column, JSON
 from pydantic import BaseModel
 
 class PacientBase(SQLModel):
@@ -8,7 +9,7 @@ class PacientBase(SQLModel):
     sex: str
     allergies:Optional[str]=Field(default=None)
     relevant_history:Optional[str]=Field(default=None)
-    previous_hospitalizations:Optional[str]=Field(default=None)
+    previous_hospitalizations:Optional[int]=Field(default=None)
     
     update_date: Optional[str]=Field(default_factory=lambda: datetime.today().isoformat())
 
@@ -23,16 +24,16 @@ class PacientUpdate(SQLModel):
     sex: str| None=None
     allergies: str| None=None
     relevant_history: str| None=None
-    previous_hospitalizations: str| None=None
+    previous_hospitalizations: int| None=None
     update_date: str| None=None
 
 class PacientList(BaseModel):
-    items: list[PacientPublic]
+    items: List[PacientPublic]
     total: int
     offset: int
     limit: int
 
-class PacientDB(PacientBase, Table=True):
+class PacientDB(PacientBase, table=True):
     __tablename__="pacient"
     id: Optional[int]=Field(default=None, primary_key=True)
     
@@ -42,10 +43,10 @@ class ConsultBase(SQLModel):
     main_complain: str
     primary_diagnosis: Optional[str]=Field(default=None)
     secondary_diagnosis: Optional[str]=Field(default=None)
-    symptoms: list[str]
-    vitals: list[str]
+    symptoms: List[str]=Field(sa_column=Column(JSON))
+    vitals: List[str]=Field(sa_column=Column(JSON))
     exams_results: Optional[str]=Field(default=None)
-    current_medication: Optional[list[str]]=Field(default=None)
+    current_medication: Optional[List[str]]=Field(default=None, sa_column=Column(JSON))
     
     update_date: Optional[str]=Field(default_factory=lambda: datetime.today().isoformat())
     
@@ -61,20 +62,20 @@ class ConsultUpdate(SQLModel):
     main_complain: str| None=None
     primary_diagnosis: str| None=None
     secondary_diagnosis: str| None=None
-    symptoms: list[str]| None=None
-    vitals: list[str]| None=None
+    symptoms: List[str]| None=None
+    vitals: List[str]| None=None
     exams_results: str| None=None
-    current_medication: list[str]| None=None
+    current_medication: List[str]| None=None
     
     update_date: str| None=None
 
 class ConsultList(BaseModel):
-    items: list[ConsultPublic]
+    items: List[ConsultPublic]
     total: int
     offset: int
     limit: int
     
-class ConsultDB(ConsultBase, Table=True):
+class ConsultDB(ConsultBase, table=True):
     __tablename__="consult"
     id: Optional[int]=Field(default=None, primary_key=True)
     pacient_id: int=Field(foreign_key="pacient.id")
@@ -108,7 +109,7 @@ class AnalysisUpdate(SQLModel):
     relevance_punctuation: float| None=None
 
 class AnalysisList(BaseModel):
-    items: list[AnalysisPublic]
+    items: List[AnalysisPublic]
     total: int
     offset: int
     limit: int
@@ -117,7 +118,7 @@ class AnalysisRequest(BaseModel):
     consult_id: int
     focus: Literal["epidemiology", "diagnosis", "treatment"]
 
-class AnalysisDB(AnalysisBase, Table=True):
+class AnalysisDB(AnalysisBase, table=True):
     __tablename__="analysis"
     id: Optional[int]=Field(default=None, primary_key=True)
     consult_id: int=Field(foreign_key="consult.id")
