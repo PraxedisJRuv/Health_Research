@@ -198,7 +198,7 @@ def select_top(state: MedicalResearchState) -> dict:
 
 def article_analysis(state: MedicalResearchState)-> dict:
     llm_analyst=LLM.with_structured_output(ArticleAnalysis)
-    patient_json=json.dump(state["patient_data"], ensure_ascii=False, indent=2)
+    patient_json=json.dumps(state["patient_data"], ensure_ascii=False, indent=2)
     report=[]
     
     for i, article in enumerate(state["best_articles"], 1):
