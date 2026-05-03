@@ -37,7 +37,7 @@ class PacientDB(PacientBase, Table=True):
     id: Optional[int]=Field(default=None, primary_key=True)
     
 class ConsultBase(SQLModel):
-    pacient_id: int
+    pacient_id: int| None=None
     
     main_complain: str
     primary_diagnosis: Optional[str]=Field(default=None)
@@ -83,6 +83,7 @@ class ConsultDB(ConsultBase, Table=True):
 class AnalysisBase(SQLModel):
     consult_id: int
     
+    focus:str
     tile: str
     source: str
     abstract: str
@@ -112,8 +113,13 @@ class AnalysisList(BaseModel):
     offset: int
     limit: int
 
+class AnalysisRequest(BaseModel):
+    consult_id: int
+    focus: Literal["epidemiology", "diagnosis", "treatment"]
+
 class AnalysisDB(AnalysisBase, Table=True):
     __tablename__="analysis"
     id: Optional[int]=Field(default=None, primary_key=True)
     consult_id: int=Field(foreign_key="consult.id")
+    pacient_id: int=Field(foreign_key="pacient.id")
     
