@@ -12,7 +12,7 @@ class PacientBase(SQLModel):
     previous_hospitalizations:Optional[int]=Field(default=None)
     
     update_date: Optional[str]=Field(default_factory=lambda: datetime.today().isoformat())
-
+#Hay que revisar el datetime today
 class PacientCreate(PacientBase):
     pass
 

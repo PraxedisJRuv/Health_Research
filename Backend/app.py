@@ -1,18 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException, Response, Query
 from sqlmodel import Session, select, or_, func
 from typing import Literal
-
-try:
-    from .models import *
-    from .utils import get_session, create_db
-except ImportError:
-    from models import *
-    from utils import get_session, create_db
-
-try:
-    from Backend.Agent.graph import graph_build
-except ImportError:
-    from Agent.graph import graph_build
+from models import *
+from utils import get_session, create_db
+from Agent.graph import graph_build
 
 app = FastAPI()
 

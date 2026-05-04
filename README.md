@@ -9,7 +9,8 @@ An Agent that given a clinical record and a focus (diagnosis, treatment, epidemi
 
 ## Tech Stack
 - **Programming Language**: Python
-- **Libraries**: OpenAI, Requests, FastAPI
+- **Libraries**: FastAPI, Uvicorn, LangChain, SQLModel, Pydantic
+- **Model provider**: Google Gemini via `langchain-google-genai`
 - **APIs**: PubMed API, DuckDuckGo Search API
 - **Environment**: Virtual Environment (.venv)
 
@@ -41,16 +42,35 @@ An Agent that given a clinical record and a focus (diagnosis, treatment, epidemi
    .venv\Scripts\activate
    ```
 
-2. Run the main application:
+2. Start the backend API server:
    ```bash
-   python Backend/app.py
-   ```
-   for propper API use and documentation:
-   ```bash
-   uvicorn Backend\app:app --reload
+   uvicorn Backend.app:app --reload
    ```
 
-3. Follow the prompts to input clinical records and specify the focus (diagnosis, treatment, epidemiology).
+3. Open the API docs at:
+   ```text
+   http://127.0.0.1:8000/docs
+   ```
+
+4. Use the API endpoints to submit patient records, create consults, and generate analysis results.
+
+## Docker Usage
+1. Build the Docker image:
+   ```bash
+   docker build -t health-backend .
+   ```
+
+2. Run the backend container:
+   ```bash
+   docker run -p 8000:8000 health-backend
+   ```
+
+3. Visit the API docs at:
+   ```text
+   http://127.0.0.1:8000/docs
+   ```
+
+> If you already have Docker installed, this lets you run the backend without creating a local Python virtual environment.
 
 ## Project Structure
 ```
