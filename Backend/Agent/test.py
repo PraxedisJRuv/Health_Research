@@ -37,7 +37,7 @@ EXAMPLE={"patient_id": "MX-2024-001",
     }
 FOCUS="treatment"
 
-def run():
+def run_test():
     
     graph=graph_build()
     
@@ -61,4 +61,5 @@ def run():
 
     return result
 
-run()
+if __name__=="__main__":
+    run_test()

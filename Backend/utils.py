@@ -1,5 +1,3 @@
-import json
-import os
 from sqlmodel import Session, SQLModel, create_engine
 
 sqlite_file_name="database.db"

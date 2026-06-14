@@ -5,10 +5,11 @@ from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from langchain_community.utilities import PubMedAPIWrapper
 import json
 import os
+import time
 from dotenv import load_dotenv
 from .schema import (MedicalResearchState, ClinicalInterpretation, ArticleScore,
                     ArticleAnalysis, focus_instructions, N_SEARCH_RESULTS, 
-                    MAX_ITERATIONS, MIN_SCORE, TARGET_ARTICLES, LIMIT_SLEEP)
+                    MIN_SCORE, TARGET_ARTICLES, LIMIT_SLEEP)
 
 # LLM and search engine configuration
 load_dotenv()
@@ -180,7 +181,7 @@ def punctuate_articles(state: MedicalResearchState)-> dict:
     return {"articles_punctuated": total_punctuated}
 
 
-# Node 5: Select top
+# Node 5: Select top articles regarding score
 def select_top(state: MedicalResearchState) -> dict:
     punctuated=state.get("articles_punctuation",[])
     if not punctuated:
@@ -196,6 +197,8 @@ def select_top(state: MedicalResearchState) -> dict:
         
     return {"best_articles":candidates}
 
+
+#Final node: Generate the analysis of the most relevant articles
 def article_analysis(state: MedicalResearchState)-> dict:
     llm_analyst=LLM.with_structured_output(ArticleAnalysis)
     patient_json=json.dumps(state["patient_data"], ensure_ascii=False, indent=2)

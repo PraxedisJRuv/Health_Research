@@ -4,6 +4,9 @@ from sqlmodel import Field, SQLModel
 from sqlalchemy import Column, JSON
 from pydantic import BaseModel
 
+"""
+Pacient models
+"""
 class PacientBase(SQLModel):
     pacient_name: Optional[str]=Field(default=None)
     sex: str
@@ -12,7 +15,7 @@ class PacientBase(SQLModel):
     previous_hospitalizations:Optional[int]=Field(default=None)
     
     update_date: Optional[str]=Field(default_factory=lambda: datetime.today().isoformat())
-#Hay que revisar el datetime today
+y
 class PacientCreate(PacientBase):
     pass
 
@@ -37,6 +40,10 @@ class PacientDB(PacientBase, table=True):
     __tablename__="pacient"
     id: Optional[int]=Field(default=None, primary_key=True)
     
+    
+"""
+Consult models
+"""
 class ConsultBase(SQLModel):
     pacient_id: int| None=None
     
@@ -81,6 +88,9 @@ class ConsultDB(ConsultBase, table=True):
     pacient_id: int=Field(foreign_key="pacient.id")
     
     
+"""
+Analysis models
+"""
 class AnalysisBase(SQLModel):
     consult_id: int
     

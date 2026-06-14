@@ -21,8 +21,9 @@ def create_pacient(pacient:PacientCreate, session=Depends(get_session)):
     session.refresh(db_pacient)
     return db_pacient
 
+
 @app.get("/pacients",response_model=PacientList)
-def get_pacients_list(offset:int=0, limit: int=Query(default=10, le=10),search: str|None=None, session=Depends(get_session)):
+def get_pacients_list(offset:int=0, limit: int=Query(default=10, le=10), search:str|None=None, session=Depends(get_session)):
     query=select(PacientDB)
     if search:
         query=query.where(or_(
@@ -33,12 +34,14 @@ def get_pacients_list(offset:int=0, limit: int=Query(default=10, le=10),search: 
     pacients=session.exec(query.offset(offset).limit(limit)).all()
     return PacientList(items=pacients, total=total, offset=offset, limit=limit)
 
+
 @app.get("/pacients/{pacient_id}", response_model=PacientPublic)
 def get_pacient(pacient_id:int, session=Depends(get_session)):
     pacient=session.get(PacientDB,pacient_id)
     if not pacient:
         raise HTTPException(status_code=404, detail="Pacient not found")
     return pacient
+
 
 @app.delete("/pacients/{pacient_id}")
 def delete_pacient(pacient_id: int, session=Depends(get_session)):
@@ -48,6 +51,7 @@ def delete_pacient(pacient_id: int, session=Depends(get_session)):
     session.delete(pacient)
     session.commit()
     return Response(status_code=204)
+
 
 @app.patch("/pacients/{pacient_id}", response_model=PacientPublic)
 def update_pacient(pacient_id: int, update:PacientUpdate, session=Depends(get_session)):
@@ -64,6 +68,7 @@ def update_pacient(pacient_id: int, update:PacientUpdate, session=Depends(get_se
     session.refresh(pacient)
     return pacient
 
+
 @app.post("/pacients/{pacient_id}/consults", response_model=ConsultPublic)
 def create_consult(pacient_id: int, consult: ConsultCreate, session=Depends(get_session)):
     consult.pacient_id = pacient_id
@@ -73,6 +78,7 @@ def create_consult(pacient_id: int, consult: ConsultCreate, session=Depends(get_
     session.refresh(db_consult)
     return db_consult
 
+
 @app.post("/consults", response_model=ConsultPublic)
 def create_consult(consult: ConsultCreate, session=Depends(get_session)):
     db_consult=ConsultDB.model_validate(consult)
@@ -80,6 +86,7 @@ def create_consult(consult: ConsultCreate, session=Depends(get_session)):
     session.commit()
     session.refresh(db_consult)
     return db_consult
+
 
 @app.get("/consults", response_model=ConsultList)
 def get_consults_list(offset: int=0, limit: int=Query(default=10, le=100), search: str|None=None, session=Depends(get_session)):
@@ -94,12 +101,14 @@ def get_consults_list(offset: int=0, limit: int=Query(default=10, le=100), searc
     consults=session.exec(query.offset(offset).limit(limit)).all()
     return ConsultList(items=consults, total=total, offset=offset, limit=limit)
 
+
 @app.get("/consults/{consult_id}", response_model=ConsultPublic)
 def get_consult(consult_id: int, session=Depends(get_session)):
     consult=session.get(ConsultDB, consult_id)
     if not consult:
         raise HTTPException(status_code=404, detail="Consult not found")
     return consult
+
 
 @app.get("/pacients/{pacient_id}/consults", response_model=ConsultList)
 def get_consults_by_pacient(pacient_id: int, offset: int = 0, limit: int = Query(default=10, le=100), session=Depends(get_session)):
@@ -110,6 +119,7 @@ def get_consults_by_pacient(pacient_id: int, offset: int = 0, limit: int = Query
     
     return ConsultList(items=consults, total=total, offset=offset, limit=limit)
 
+
 @app.delete("/consults/{consult_id}")
 def delete_consult(consult_id: int, session=Depends(get_session)):
     consult=session.get(ConsultDB, consult_id)
@@ -118,6 +128,7 @@ def delete_consult(consult_id: int, session=Depends(get_session)):
     session.delete(consult)
     session.commit()
     return Response(status_code=204)
+
 
 @app.patch("/consults/{consult_id}", response_model=ConsultPublic)
 def update_consult(consult_id: int, update: ConsultUpdate, session=Depends(get_session)):
@@ -134,6 +145,7 @@ def update_consult(consult_id: int, update: ConsultUpdate, session=Depends(get_s
     session.refresh(consult)
     return consult
 
+
 @app.get("/consults/{consult_id}/analysis", response_model=AnalysisList)
 def get_analysis_by_consult(consult_id: int, offset: int = 0, limit: int = Query(default=10, le=100), session=Depends(get_session)):
     query = select(AnalysisDB).where(AnalysisDB.consult_id == consult_id)
@@ -142,6 +154,7 @@ def get_analysis_by_consult(consult_id: int, offset: int = 0, limit: int = Query
     analysis = session.exec(query.offset(offset).limit(limit)).all()
     
     return AnalysisList(items=analysis, total=total, offset=offset, limit=limit)
+
 
 @app.post("/analyses", response_model=AnalysisList)
 def create_analyses(request: AnalysisRequest, session=Depends(get_session)):
@@ -199,12 +212,14 @@ def create_analyses(request: AnalysisRequest, session=Depends(get_session)):
     
     return AnalysisList(items=analyses, total=len(analyses), offset=0, limit=len(analyses))
 
+
 @app.get("/analyses/{analysis_id}", response_model=AnalysisPublic)
 def get_analysis(analysis_id: int, session=Depends(get_session)):
     analysis=session.get(AnalysisDB, analysis_id)
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")
     return analysis
+
 
 @app.delete("/analyses/{analysis_id}")
 def delete_analysis(analysis_id: int, session=Depends(get_session)):

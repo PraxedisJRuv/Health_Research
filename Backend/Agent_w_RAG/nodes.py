@@ -8,7 +8,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
 import json
 import os, time
-import requests
 from dotenv import load_dotenv
 from .schema import (MedicalResearchState, ClinicalInterpretation, ArticleScore,
                     ArticleAnalysis, focus_instructions, N_SEARCH_RESULTS, 
@@ -275,7 +274,6 @@ def article_analysis(state: MedicalResearchState)-> dict:
 
 #Node after articles_search, downloads the text, divides it in chunks, generates embbedingds and stores and saves then in FAISS    
 def fetch_and_chunk(state: MedicalResearchState)-> dict:
-    
     articles=state.get("raw_articles",[])
     all_docs=[]
     
@@ -306,7 +304,6 @@ def fetch_and_chunk(state: MedicalResearchState)-> dict:
 
 #Node before article analysis, it takes the clinical:summary as query as well as the most relevant chunks from vector store to give it to the analysis
 def semantic_retrieval(state: MedicalResearchState)-> dict:
-    
     vectorstore=state.get("vectorstore")
     if vectorstore is None:
         return {"retrieved_chunks":{}}

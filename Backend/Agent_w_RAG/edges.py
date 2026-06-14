@@ -2,6 +2,7 @@
 from typing import Literal
 from .schema import (MedicalResearchState, 
                     MIN_SCORE, TARGET_ARTICLES, MAX_ITERATIONS)
+
 def stop_criteria(state: MedicalResearchState)-> Literal["article_search", "select_top"]:
     high_quality=[
         a for a in state.get("articles_punctuation", [])
